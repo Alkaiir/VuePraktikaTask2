@@ -1,0 +1,32 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    outline: none;
+}
+
+.board {
+    width: 100vw;
+    height: 100vh;
+    background: #c6c4a3;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+}
+
+.column {
+    width: 30vw;
+    height: 80vh;
+    background: aliceblue;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.card {
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    text-align: center;
+    width: 20vw;
+}
