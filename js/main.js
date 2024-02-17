@@ -2,8 +2,9 @@ Vue.component('board', {
     template: `
     <div>
         <button class="openModalButton" @click="modal = true">+</button>
-        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addTask"></modal-form>
+        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList"></modal-form>
         <board-column class="column" v-for="column in columns" :key="column.position" :column="column"></board-column>
+<!--        <p>{{ columns }}</p>-->
     </div>
  `,
     data() {
@@ -11,33 +12,11 @@ Vue.component('board', {
             columns:[
                 {position: 1,
                  maxCards: 3,
-                 cards:[
-                     {title: 'Список 1',
-                      tasks: [
-                          {desc: "Сходить в магазин", status: false},
-                          {desc: "Погулять с собакой", status: false}
-                      ]
-                     }
-                     ]
+                 cards:[]
                 },
                 {position: 2,
                  maxCards: 5,
-                 cards: [
-                     {
-                         title: 'Список 2',
-                         tasks: [
-                             {desc: "Приготовить ужин", status: true},
-                             {desc: "Сделать уборку", status: false}
-                         ]
-                     },
-                     {
-                         title: 'Список 3',
-                         tasks: [
-                             {desc: "Приготовить ужин", status: true},
-                             {desc: "Сделать уборку", status: false}
-                         ]
-                     }
-                     ]
+                 cards: []
                 },
                 {position: 3,
                  cards: []
@@ -52,10 +31,53 @@ Vue.component('board', {
                 this.modal = false;
             }
         },
-        addTask(card) {
-            this.columns[0].cards.push(card);
+        addList(card) {
+            if (this.columns[0].cards.length < this.columns[0].maxCards) {
+                this.columns[0].cards.push(card);
+            } else {
+                alert('В 1 столбце максимальное количество карточек')
+            }
         }
+    },
+    mounted() {
+        if (localStorage.data !== undefined) {
+            let data = JSON.parse(localStorage.data);
+            this.columns = data.columns;
+        }
+
+        eventBus.$on('cards-update', cardsUpdate => {
+            console.log('Данные загружены в LocalStorage');
+            let columns = {columns: this.columns}
+            localStorage.data = JSON.stringify(columns);
+        })
+        eventBus.$on('columns-update', columnsUpdate => {
+            console.log('Данные загружены в LocalStorage');
+            let columns = {columns: this.columns}
+            localStorage.data = JSON.stringify(columns);
+        })
+        eventBus.$on('move-card-to-second-column', moveToSecond = (cardTitle) => {
+            for (let i = 0; i < this.columns[0].cards.length; ++i){
+                if (this.columns[0].cards[i].title === cardTitle) {
+                    let tempCards = this.columns[0].cards[i];
+                    this.columns[0].cards.splice(i,1);
+                    this.columns[1].cards.push(tempCards);
+                }
+            }
+        })
+
+        eventBus.$on('move-card-to-third-column', moveToThird = (cardTitle) => {
+            for (let i = 0; i < this.columns[1].cards.length; ++i){
+                if (this.columns[1].cards[i].title === cardTitle) {
+                    let tempCard = this.columns[1].cards[i];
+                    let timeNow = new Date();
+                    tempCard.completeTime = timeNow;
+                    this.columns[1].cards.splice(i,1);
+                    this.columns[2].cards.push(tempCard);
+                }
+            }
+        })
     }
+
 })
 
 Vue.component('board-column', {
@@ -93,6 +115,7 @@ Vue.component('modal-form',{
     data () {
         return {
             title: null,
+            completeTime: null,
             taskList: [
                 {task1: null},
                 {task2: null},
@@ -109,9 +132,11 @@ Vue.component('modal-form',{
 
             let createdTask = {
                 title: this.title,
+                completeTime: null,
                 tasks: [
 
                 ]
+
             }
 
             for (let i = 0; i < taskList.length; ++i) {
@@ -125,7 +150,13 @@ Vue.component('modal-form',{
                 }
             }
 
+            if (createdTask.tasks.length < 3) {
+                alert('У списка должно быть минимум 3 задачи');
+                return
+            }
+
             this.$emit('add-task', createdTask);
+            eventBus.$emit('cards-update');
 
             taskList.task1 = null;
             taskList.task2 = null;
@@ -140,7 +171,8 @@ Vue.component('board-card', {
     template: `
     <div>
         <h2>{{ title }}</h2>
-        <p v-for="task in tasks" :key="task.title"><input type="checkbox" :checked="task.status">{{ task.desc }}</p>
+        <p v-for="task in tasks" :key="task.title"><input type="checkbox" v-model="task.status" @change="tasksUpdate" :checked="task.status" :disabled="task.status">{{ task.status }}</p>
+        <p v-if="completeTime !== null">{{ completeTime }}</p>
     </div>
  `,
     props: {
@@ -149,13 +181,39 @@ Vue.component('board-card', {
     data() {
         return {
             title: this.card.title,
+            completeTime: this.card.completeTime,
             tasks: this.card.tasks
         }
     },
     methods: {
+        tasksUpdate () {
+            let tasksComplete = 0;
+            for (let i = 0; i < this.tasks.length; ++i) {
+                if (this.tasks[i].status === true) {
+                    tasksComplete += 1;
+                }
+            }
+            if (tasksComplete >= (this.tasks.length / 2)) {
 
+                // if (this.columns[1].cards.length < this.columns[1].maxCards) {
+                //
+                // } else {
+                //     alert('Во втором столбце не может быть больше 5 карточек');
+                // }
+
+
+                eventBus.$emit('move-card-to-second-column', this.title);
+            }
+            if (tasksComplete === (this.tasks.length)) {
+                eventBus.$emit('move-card-to-third-column', this.title);
+            }
+            eventBus.$emit('cards-update');
+        }
     }
 })
+
+let eventBus = new Vue()
+
 
 let app = new Vue({
     el: '#app',
