@@ -3,7 +3,7 @@ Vue.component('board', {
     <div>
         <button class="openModalButton" @click="modal = true">+</button>
         <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList"></modal-form>
-        <board-column class="column" v-for="column in columns" :key="column.position" :column="column"></board-column>
+        <board-column class="column" v-for="column in columns" :key="column.position" :column="column" :columns="columns"></board-column>
 <!--        <p>{{ columns }}</p>-->
     </div>
  `,
@@ -83,15 +83,16 @@ Vue.component('board', {
 Vue.component('board-column', {
     template: `
     <div>
-        <board-card class="card" v-for="card in this.column.cards" :key="card.title" :card="card"></board-card>
+        <board-card class="card" v-for="card in this.column.cards" :key="card.title" :card="card" :columns="columnsData"></board-card>
     </div>
  `,
     props: {
+        columns:Array,
         column: Object
     },
     data() {
         return {
-
+            columnsData: this.columns
         }
     },
 })
@@ -143,7 +144,10 @@ Vue.component('modal-form',{
                 if (taskList[i] !== null && taskList[i] !== undefined) {
                     let task = {
                         desc: '' + taskList[i],
-                        status: false
+                        status: {
+                            complete: false,
+                            disabled: false,
+                        }
                     }
 
                     createdTask.tasks.push(task);
@@ -171,12 +175,22 @@ Vue.component('board-card', {
     template: `
     <div>
         <h2>{{ title }}</h2>
-        <p v-for="task in tasks" :key="task.title"><input type="checkbox" v-model="task.status" @change="tasksUpdate" :checked="task.status" :disabled="task.status">{{ task.status }}</p>
-        <p v-if="completeTime !== null">{{ completeTime }}</p>
+        <p v-for="task in tasks" :key="task.title">
+            <input 
+            type="checkbox"
+            v-model="task.status.complete" 
+            @change="tasksUpdate" 
+            :checked="task.status.complete"
+            :disabled="task.status.disabled"
+            >
+            {{ task.status.complete }}
+        </p>
+        <p v-if="completeTime !== null">Complete :{{  completeTime }}</p>
     </div>
  `,
     props: {
-        card: Object
+        card: Object,
+        columns: Array
     },
     data() {
         return {
@@ -194,18 +208,29 @@ Vue.component('board-card', {
                 }
             }
             if (tasksComplete >= (this.tasks.length / 2)) {
+                if (this.columns[1].cards.length < this.columns[1].maxCards) {
+                    eventBus.$emit('move-card-to-second-column', this.title);
+                } else {
+                    alert('Во втором столбце не может быть больше 5 карточек');
+                    for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                        for (let j = 0; j < this.columns[0].cards.tasks.length; ++i) {
+                            if (this.columns[0].cards.tasks.status === false) {
 
-                // if (this.columns[1].cards.length < this.columns[1].maxCards) {
-                //
-                // } else {
-                //     alert('Во втором столбце не может быть больше 5 карточек');
-                // }
+                            }
+                        }
+                    }
 
-
-                eventBus.$emit('move-card-to-second-column', this.title);
+                }
             }
             if (tasksComplete === (this.tasks.length)) {
+                if (this.columns[1].cards.length < this.columns[1].maxCards) {
+                    eventBus.$emit('move-card-to-third-column', this.title);
+
+                } else {
+
+                }
                 eventBus.$emit('move-card-to-third-column', this.title);
+
             }
             eventBus.$emit('cards-update');
         }
