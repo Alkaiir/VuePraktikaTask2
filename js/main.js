@@ -2,9 +2,9 @@ Vue.component('board', {
     template: `
     <div>
         <button class="openModalButton" @click="modal = true">+</button>
-        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList"></modal-form>
+        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList" :columns="columns"></modal-form>
         <board-column class="column" v-for="column in columns" :key="column.position" :column="column" :columns="columns"></board-column>
-<!--        <p>{{ columns }}</p>-->
+        <div style="position: absolute; top: 110vh">{{ columns[1].cards.length }}</div>
     </div>
  `,
     data() {
@@ -12,6 +12,7 @@ Vue.component('board', {
             columns:[
                 {position: 1,
                  maxCards: 3,
+                 canAdd: true,
                  cards:[]
                 },
                 {position: 2,
@@ -63,6 +64,7 @@ Vue.component('board', {
                     this.columns[1].cards.push(tempCards);
                 }
             }
+            eventBus.$emit('columns-update');
         })
 
         eventBus.$on('move-card-to-third-column', moveToThird = (cardTitle) => {
@@ -75,6 +77,7 @@ Vue.component('board', {
                     this.columns[2].cards.push(tempCard);
                 }
             }
+            eventBus.$emit('columns-update');
         })
     }
 
@@ -83,16 +86,15 @@ Vue.component('board', {
 Vue.component('board-column', {
     template: `
     <div>
-        <board-card class="card" v-for="card in this.column.cards" :key="card.title" :card="card" :columns="columnsData"></board-card>
+        <board-card class="card" v-for="card in this.column.cards" :key="card.title" :card="card" :columns="columns"></board-card>
     </div>
  `,
     props: {
-        columns:Array,
+        columns: Array,
         column: Object
     },
     data() {
         return {
-            columnsData: this.columns
         }
     },
 })
@@ -113,6 +115,9 @@ Vue.component('modal-form',{
     </div>
     </div>  
     `,
+    props: {
+        columns: Array
+    },
     data () {
         return {
             title: null,
@@ -129,44 +134,48 @@ Vue.component('modal-form',{
     },
     methods: {
         addCard () {
-            let taskList = [this.taskList.task1, this.taskList.task2, this.taskList.task3, this.taskList.task4, this.taskList.task5];
+            if (this.columns[0].canAdd === true) {
+                let taskList = [this.taskList.task1, this.taskList.task2, this.taskList.task3, this.taskList.task4, this.taskList.task5];
 
-            let createdTask = {
-                title: this.title,
-                completeTime: null,
-                tasks: [
+                let createdTask = {
+                    title: this.title,
+                    completeTime: null,
+                    tasks: [
 
-                ]
+                    ]
 
-            }
-
-            for (let i = 0; i < taskList.length; ++i) {
-                if (taskList[i] !== null && taskList[i] !== undefined) {
-                    let task = {
-                        desc: '' + taskList[i],
-                        status: {
-                            complete: false,
-                            disabled: false,
-                        }
-                    }
-
-                    createdTask.tasks.push(task);
                 }
+
+                for (let i = 0; i < taskList.length; ++i) {
+                    if (taskList[i] !== null && taskList[i] !== undefined) {
+                        let task = {
+                            desc: '' + taskList[i],
+                            status: {
+                                complete: false,
+                                disabled: false,
+                            }
+                        }
+
+                        createdTask.tasks.push(task);
+                    }
+                }
+
+                if (createdTask.tasks.length < 3) {
+                    alert('У списка должно быть минимум 3 задачи');
+                    return
+                }
+
+                this.$emit('add-task', createdTask);
+                eventBus.$emit('cards-update');
+
+                taskList.task1 = null;
+                taskList.task2 = null;
+                taskList.task3 = null;
+                taskList.task4 = null;
+                taskList.task5 = null;
+            } else {
+                alert('Первый столбец заблокирован');
             }
-
-            if (createdTask.tasks.length < 3) {
-                alert('У списка должно быть минимум 3 задачи');
-                return
-            }
-
-            this.$emit('add-task', createdTask);
-            eventBus.$emit('cards-update');
-
-            taskList.task1 = null;
-            taskList.task2 = null;
-            taskList.task3 = null;
-            taskList.task4 = null;
-            taskList.task5 = null;
         }
     }
 })
@@ -178,12 +187,11 @@ Vue.component('board-card', {
         <p v-for="task in tasks" :key="task.title">
             <input 
             type="checkbox"
-            v-model="task.status.complete" 
-            @change="tasksUpdate" 
+            @change="tasksUpdate(task.desc)" 
             :checked="task.status.complete"
             :disabled="task.status.disabled"
             >
-            {{ task.status.complete }}
+            {{ task.desc }}
         </p>
         <p v-if="completeTime !== null">Complete :{{  completeTime }}</p>
     </div>
@@ -196,43 +204,50 @@ Vue.component('board-card', {
         return {
             title: this.card.title,
             completeTime: this.card.completeTime,
-            tasks: this.card.tasks
+            tasks: this.card.tasks,
         }
     },
     methods: {
-        tasksUpdate () {
+        tasksUpdate (desc) {
+
+            console.log(this.columns);
+
+            for (let i = 0; i < this.tasks.length; ++i) {
+                if (this.tasks[i].desc === desc) {
+                    this.tasks[i].status.complete = true;
+                    this.tasks[i].status.disabled = true;
+                }
+            }
+
             let tasksComplete = 0;
             for (let i = 0; i < this.tasks.length; ++i) {
-                if (this.tasks[i].status === true) {
+                if (this.tasks[i].status.complete === true) {
                     tasksComplete += 1;
                 }
             }
-            if (tasksComplete >= (this.tasks.length / 2)) {
-                if (this.columns[1].cards.length < this.columns[1].maxCards) {
-                    eventBus.$emit('move-card-to-second-column', this.title);
-                } else {
-                    alert('Во втором столбце не может быть больше 5 карточек');
-                    for (let i = 0; i < this.columns[0].cards.length; ++i) {
-                        for (let j = 0; j < this.columns[0].cards.tasks.length; ++i) {
-                            if (this.columns[0].cards.tasks.status === false) {
 
-                            }
+            if (tasksComplete >= (this.tasks.length / 2)) {
+                if (this.columns[1].cards.length < 5) {
+                    eventBus.$emit('move-card-to-second-column', this.title);
+                    eventBus.$emit('cards-update');
+                    eventBus.$emit('columns-update');
+                } else {
+                    for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                        //--
+                        for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
+                            console.log(this.columns[0].cards[i].tasks[j])
+                            this.columns[0].cards[i].tasks[j].status.disabled = true;
                         }
                     }
-
+                    this.columns[0].canAdd = false;
                 }
             }
             if (tasksComplete === (this.tasks.length)) {
-                if (this.columns[1].cards.length < this.columns[1].maxCards) {
-                    eventBus.$emit('move-card-to-third-column', this.title);
-
-                } else {
-
-                }
                 eventBus.$emit('move-card-to-third-column', this.title);
+                eventBus.$emit('cards-update');
 
             }
-            eventBus.$emit('cards-update');
+
         }
     }
 })
