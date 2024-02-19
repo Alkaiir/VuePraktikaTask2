@@ -230,12 +230,9 @@ Vue.component('board-card', {
                 if (this.columns[1].cards.length < 5) {
                     eventBus.$emit('move-card-to-second-column', this.title);
                     eventBus.$emit('cards-update');
-                    eventBus.$emit('columns-update');
                 } else {
                     for (let i = 0; i < this.columns[0].cards.length; ++i) {
-                        //--
                         for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
-                            console.log(this.columns[0].cards[i].tasks[j])
                             this.columns[0].cards[i].tasks[j].status.disabled = true;
                         }
                     }
@@ -244,8 +241,18 @@ Vue.component('board-card', {
             }
             if (tasksComplete === (this.tasks.length)) {
                 eventBus.$emit('move-card-to-third-column', this.title);
-                eventBus.$emit('cards-update');
-
+                console.log(this.columns[1].cards)
+                if (this.columns[1].cards.length < 5) {
+                    eventBus.$emit('cards-update');
+                    for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                        for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
+                            if (this.columns[0].cards[i].tasks[j].status.complete !== true) {
+                                this.columns[0].cards[i].tasks[j].status.disabled = false;
+                            }
+                        }
+                    }
+                    this.columns[0].canAdd = true;
+                }
             }
 
         }
