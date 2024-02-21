@@ -4,8 +4,6 @@ Vue.component('board', {
         <button class="openModalButton" @click="modal = true">+</button>
         <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList" :columns="columns" :taskIdList="taskIdList" :listIdList="listIdList"></modal-form>
         <board-column class="column" v-for="column in columns" :key="column.position" :column="column" :columns="columns"></board-column>
-        <p>{{ listIdList }}</p>
-        <p>{{ taskIdList }}</p>
     </div>
  `,
     data() {
