@@ -208,7 +208,7 @@ Vue.component('modal-form',{
 Vue.component('board-card', {
     template: `
     <div>
-        <h2>{{ this.card.listID }}</h2>
+        <h2>{{ this.card.title}}</h2>
         <p v-for="task in this.card.tasks" :key="task.taskID">
             <input 
             type="checkbox"
@@ -216,7 +216,7 @@ Vue.component('board-card', {
             :checked="task.status.complete"
             :disabled="task.status.disabled"
             >
-            {{ task.taskID }}
+            {{ task.desc }}
         </p>
         <p v-if="this.card.completeTime !== null">Complete :{{  this.card.completeTime }}</p>
     </div>
