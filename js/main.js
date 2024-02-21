@@ -97,6 +97,27 @@ Vue.component('board', {
             }
             eventBus.$emit('data-update');
         })
+
+        eventBus.$on('remove-card', removeCard = (cardID) => {
+            for (let i = 0; i < this.columns[0].cards.length; ++i){
+                if (this.columns[0].cards[i].listID === cardID) {
+                    this.columns[0].cards.splice(i,1);
+                }
+            }
+
+            for (let i = 0; i < this.columns[1].cards.length; ++i){
+                if (this.columns[1].cards[i].listID === cardID) {
+                    this.columns[1].cards.splice(i,1);
+                }
+            }
+
+            for (let i = 0; i < this.columns[2].cards.length; ++i){
+                if (this.columns[2].cards[i].listID === cardID) {
+                    this.columns[2].cards.splice(i,1);
+                }
+            }
+            eventBus.$emit('data-update');
+        })
     }
 
 })
@@ -219,6 +240,7 @@ Vue.component('board-card', {
             {{ task.desc }}
         </p>
         <p v-if="this.card.completeTime !== null">Complete :{{  this.card.completeTime }}</p>
+        <button @click="removeCard(card.listID)"> X </button>
     </div>
  `,
     props: {
@@ -227,7 +249,6 @@ Vue.component('board-card', {
     },
     data() {
         return {
-
         }
     },
     methods: {
@@ -277,7 +298,11 @@ Vue.component('board-card', {
                 }
             }
 
+        },
+        removeCard (cardID) {
+            eventBus.$emit('remove-card', cardID);
         }
+
     }
 })
 
