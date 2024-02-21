@@ -2,28 +2,31 @@ Vue.component('board', {
     template: `
     <div>
         <button class="openModalButton" @click="modal = true">+</button>
-        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList" :columns="columns"></modal-form>
+        <modal-form v-if="modal" class="modal" @close-modal="updateModal" @add-task="addList" :columns="columns" :taskIdList="taskIdList" :listIdList="listIdList"></modal-form>
         <board-column class="column" v-for="column in columns" :key="column.position" :column="column" :columns="columns"></board-column>
-        <div style="position: absolute; top: 110vh">{{ columns[1].cards.length }}</div>
+        <p>{{ listIdList }}</p>
+        <p>{{ taskIdList }}</p>
     </div>
  `,
     data() {
         return {
             columns:[
                 {position: 1,
-                 maxCards: 3,
-                 canAdd: true,
-                 cards:[]
+                    maxCards: 3,
+                    canAdd: true,
+                    cards:[]
                 },
                 {position: 2,
-                 maxCards: 5,
-                 cards: []
+                    maxCards: 5,
+                    cards: []
                 },
                 {position: 3,
-                 cards: []
+                    cards: []
                 }
             ],
             modal: false,
+            taskIdList: null,
+            listIdList: null
         }
     },
     methods: {
@@ -44,32 +47,49 @@ Vue.component('board', {
         if (localStorage.data !== undefined) {
             let data = JSON.parse(localStorage.data);
             this.columns = data.columns;
+            this.taskIdList = data.taskIdList;
+            this.listIdList = data.listIdList;
         }
 
-        eventBus.$on('cards-update', cardsUpdate => {
-            console.log('Данные загружены в LocalStorage');
-            let columns = {columns: this.columns}
-            localStorage.data = JSON.stringify(columns);
+        if (this.taskIdList === null) {
+            this.taskIdList = 0;
+        }
+
+        if (this.listIdList === null) {
+            this.listIdList = 0;
+        }
+
+        eventBus.$on('update-list-id-list', updateListIdList => {
+            this.listIdList += 1;
         })
-        eventBus.$on('columns-update', columnsUpdate => {
-            console.log('Данные загружены в LocalStorage');
-            let columns = {columns: this.columns}
-            localStorage.data = JSON.stringify(columns);
+
+        eventBus.$on('update-task-id-list', updateTaskIdList => {
+            this.taskIdList += 1;
         })
-        eventBus.$on('move-card-to-second-column', moveToSecond = (cardTitle) => {
+
+        eventBus.$on('data-update', dataUpdate => {
+            console.log('Данные загружены в LocalStorage');
+            let data = {
+                columns: this.columns,
+                taskIdList: this.taskIdList,
+                listIdList: this.listIdList
+            };
+            localStorage.data = JSON.stringify(data);
+        })
+        eventBus.$on('move-card-to-second-column', moveToSecond = (cardId) => {
             for (let i = 0; i < this.columns[0].cards.length; ++i){
-                if (this.columns[0].cards[i].title === cardTitle) {
+                if (this.columns[0].cards[i].listID === cardId) {
                     let tempCards = this.columns[0].cards[i];
                     this.columns[0].cards.splice(i,1);
                     this.columns[1].cards.push(tempCards);
                 }
             }
-            eventBus.$emit('columns-update');
+            eventBus.$emit('data-update');
         })
 
-        eventBus.$on('move-card-to-third-column', moveToThird = (cardTitle) => {
+        eventBus.$on('move-card-to-third-column', moveToThird = (cardId) => {
             for (let i = 0; i < this.columns[1].cards.length; ++i){
-                if (this.columns[1].cards[i].title === cardTitle) {
+                if (this.columns[1].cards[i].listID === cardId) {
                     let tempCard = this.columns[1].cards[i];
                     let timeNow = new Date();
                     tempCard.completeTime = timeNow;
@@ -77,7 +97,7 @@ Vue.component('board', {
                     this.columns[2].cards.push(tempCard);
                 }
             }
-            eventBus.$emit('columns-update');
+            eventBus.$emit('data-update');
         })
     }
 
@@ -86,7 +106,7 @@ Vue.component('board', {
 Vue.component('board-column', {
     template: `
     <div>
-        <board-card class="card" v-for="card in this.column.cards" :key="card.title" :card="card" :columns="columns"></board-card>
+        <board-card class="card" v-for="card in this.column.cards" :key="card.listID" :card="card" :columns="columns"></board-card>
     </div>
  `,
     props: {
@@ -116,7 +136,9 @@ Vue.component('modal-form',{
     </div>  
     `,
     props: {
-        columns: Array
+        columns: Array,
+        taskIdList: Number,
+        listIdList: Number
     },
     data () {
         return {
@@ -128,7 +150,8 @@ Vue.component('modal-form',{
                 {task3: null},
                 {task4: null},
                 {task5: null},
-            ]
+            ],
+            til: this.taskIdList
         }
 
     },
@@ -140,6 +163,7 @@ Vue.component('modal-form',{
                 let createdTask = {
                     title: this.title,
                     completeTime: null,
+                    listID: this.listIdList,
                     tasks: [
 
                     ]
@@ -150,12 +174,14 @@ Vue.component('modal-form',{
                     if (taskList[i] !== null && taskList[i] !== undefined) {
                         let task = {
                             desc: '' + taskList[i],
+                            taskID: this.til,
                             status: {
                                 complete: false,
                                 disabled: false,
                             }
                         }
-
+                        this.til += 1;
+                        eventBus.$emit('update-task-id-list')
                         createdTask.tasks.push(task);
                     }
                 }
@@ -165,14 +191,15 @@ Vue.component('modal-form',{
                     return
                 }
 
-                this.$emit('add-task', createdTask);
-                eventBus.$emit('cards-update');
+                eventBus.$emit('update-list-id-list')
 
+                this.$emit('add-task', createdTask);
                 taskList.task1 = null;
                 taskList.task2 = null;
                 taskList.task3 = null;
                 taskList.task4 = null;
                 taskList.task5 = null;
+                eventBus.$emit('data-update');
             } else {
                 alert('Первый столбец заблокирован');
             }
@@ -183,17 +210,17 @@ Vue.component('modal-form',{
 Vue.component('board-card', {
     template: `
     <div>
-        <h2>{{ title }}</h2>
-        <p v-for="task in tasks" :key="task.title">
+        <h2>{{ this.card.listID }}</h2>
+        <p v-for="task in this.card.tasks" :key="task.taskID">
             <input 
             type="checkbox"
-            @change="tasksUpdate(task.desc)" 
+            @change="tasksUpdate(task.taskID)" 
             :checked="task.status.complete"
             :disabled="task.status.disabled"
             >
-            {{ task.desc }}
+            {{ task.taskID }}
         </p>
-        <p v-if="completeTime !== null">Complete :{{  completeTime }}</p>
+        <p v-if="this.card.completeTime !== null">Complete :{{  this.card.completeTime }}</p>
     </div>
  `,
     props: {
@@ -202,34 +229,31 @@ Vue.component('board-card', {
     },
     data() {
         return {
-            title: this.card.title,
-            completeTime: this.card.completeTime,
-            tasks: this.card.tasks,
+
         }
     },
     methods: {
-        tasksUpdate (desc) {
+        tasksUpdate (taskID) {
 
-            console.log(this.columns);
-
-            for (let i = 0; i < this.tasks.length; ++i) {
-                if (this.tasks[i].desc === desc) {
-                    this.tasks[i].status.complete = true;
-                    this.tasks[i].status.disabled = true;
+            for (let i = 0; i < this.card.tasks.length; ++i) {
+                if (this.card.tasks[i].taskID === taskID) {
+                    this.card.tasks[i].status.complete = true;
+                    this.card.tasks[i].status.disabled = true;
                 }
             }
 
             let tasksComplete = 0;
-            for (let i = 0; i < this.tasks.length; ++i) {
-                if (this.tasks[i].status.complete === true) {
+
+            for (let i = 0; i < this.card.tasks.length; ++i) {
+                if (this.card.tasks[i].status.complete === true) {
                     tasksComplete += 1;
                 }
             }
 
-            if (tasksComplete >= (this.tasks.length / 2)) {
+            if (tasksComplete >= (this.card.tasks.length / 2)) {
                 if (this.columns[1].cards.length < 5) {
-                    eventBus.$emit('move-card-to-second-column', this.title);
-                    eventBus.$emit('cards-update');
+                    eventBus.$emit('move-card-to-second-column', this.card.listID);
+                    eventBus.$emit('data-update');
                 } else {
                     for (let i = 0; i < this.columns[0].cards.length; ++i) {
                         for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
@@ -239,11 +263,11 @@ Vue.component('board-card', {
                     this.columns[0].canAdd = false;
                 }
             }
-            if (tasksComplete === (this.tasks.length)) {
-                eventBus.$emit('move-card-to-third-column', this.title);
-                console.log(this.columns[1].cards)
+            if (tasksComplete === (this.card.tasks.length)) {
+                eventBus.$emit('move-card-to-third-column', this.card.listID);
+                eventBus.$emit('data-update');
                 if (this.columns[1].cards.length < 5) {
-                    eventBus.$emit('cards-update');
+                    eventBus.$emit('data-update');
                     for (let i = 0; i < this.columns[0].cards.length; ++i) {
                         for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
                             if (this.columns[0].cards[i].tasks[j].status.complete !== true) {
