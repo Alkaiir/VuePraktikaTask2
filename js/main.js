@@ -118,6 +118,23 @@ Vue.component('board', {
             }
             eventBus.$emit('data-update');
         })
+
+        //проверка для переноса готовых карточек из первого столбца во второй
+
+        eventBus.$on('checker', checker => {
+            let tasksComplete2 = 0;
+
+            for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
+                    if (this.columns[0].cards[i].tasks[j].status.complete === true) {
+                        tasksComplete2 += 1;
+                    }
+                }
+                if (tasksComplete2 > (this.columns[0].cards[i].tasks.length / 2)){
+                    eventBus.$emit('move-card-to-second-column', this.columns[0].cards[i].lisID);
+                }
+            }
+        })
     }
 
 })
@@ -284,9 +301,8 @@ Vue.component('board-card', {
             }
             if (tasksComplete === (this.card.tasks.length)) {
                 eventBus.$emit('move-card-to-third-column', this.card.listID);
-                eventBus.$emit('data-update');
+
                 if (this.columns[1].cards.length < 5) {
-                    eventBus.$emit('data-update');
                     for (let i = 0; i < this.columns[0].cards.length; ++i) {
                         for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
                             if (this.columns[0].cards[i].tasks[j].status.complete !== true) {
@@ -296,6 +312,7 @@ Vue.component('board-card', {
                     }
                     this.columns[0].canAdd = true;
                 }
+                eventBus.$emit('data-update');
             }
 
         },
