@@ -95,6 +95,7 @@ Vue.component('board', {
                     this.columns[2].cards.push(tempCard);
                 }
             }
+            eventBus.$emit('checker');
             eventBus.$emit('data-update');
         })
 
@@ -108,6 +109,25 @@ Vue.component('board', {
             for (let i = 0; i < this.columns[1].cards.length; ++i){
                 if (this.columns[1].cards[i].listID === cardID) {
                     this.columns[1].cards.splice(i,1);
+                    eventBus.$emit('checker');
+                    if (this.columns[1].cards.length <= 5) {
+                        for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                            for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
+                                if (this.columns[0].cards[i].tasks[j].status.complete !== true) {
+                                    this.columns[0].cards[i].tasks[j].status.disabled = false;
+                                }
+                            }
+                        }
+                        for (let i = 0; i < this.columns[1].cards.length; ++i) {
+                            for (let j = 0; j < this.columns[1].cards[i].tasks.length; ++j) {
+                                if (this.columns[1].cards[i].tasks[j].status.complete !== true) {
+                                    this.columns[1].cards[i].tasks[j].status.disabled = false;
+                                }
+                            }
+                        }
+
+                        this.columns[0].canAdd = true;
+                    }
                 }
             }
 
@@ -122,16 +142,17 @@ Vue.component('board', {
         //проверка для переноса готовых карточек из первого столбца во второй
 
         eventBus.$on('checker', checker => {
-            let tasksComplete2 = 0;
+            console.log('Checker')
 
             for (let i = 0; i < this.columns[0].cards.length; ++i) {
+                let tasksComplete = 0;
                 for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
                     if (this.columns[0].cards[i].tasks[j].status.complete === true) {
-                        tasksComplete2 += 1;
+                        tasksComplete += 1;
                     }
                 }
-                if (tasksComplete2 > (this.columns[0].cards[i].tasks.length / 2)){
-                    eventBus.$emit('move-card-to-second-column', this.columns[0].cards[i].lisID);
+                if (tasksComplete >= (this.columns[0].cards[i].tasks.length / 2)){
+                    eventBus.$emit('move-card-to-second-column', this.columns[0].cards[i].listID);
                 }
             }
         })
@@ -302,7 +323,7 @@ Vue.component('board-card', {
             if (tasksComplete === (this.card.tasks.length)) {
                 eventBus.$emit('move-card-to-third-column', this.card.listID);
 
-                if (this.columns[1].cards.length < 5) {
+                if (this.columns[1].cards.length <= 5) {
                     for (let i = 0; i < this.columns[0].cards.length; ++i) {
                         for (let j = 0; j < this.columns[0].cards[i].tasks.length; ++j) {
                             if (this.columns[0].cards[i].tasks[j].status.complete !== true) {
